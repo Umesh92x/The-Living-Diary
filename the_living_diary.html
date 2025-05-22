@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="My Unique Life - Real stories from my life incidents told with heart and honesty." />
+  <title>My Unique Life</title>
+
+  <!-- Tailwind + Typography plugin -->
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Poppins"', 'sans-serif'],
+          },
+          colors: {
+            purpleLight: '#a78bfa',
+            purpleDark: '#7c3aed',
+          },
+        },
+      },
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    @keyframes fade-in-out {
+      0%, 100% { opacity: 0; transform: translateY(10px); }
+      10%, 90% { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in-out {
+      animation: fade-in-out 3s ease;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen font-sans bg-gradient-to-br from-purple-100 to-blue-50 dark:from-gray-900 dark:to-gray-800 text-gray-800 dark:text-gray-200 transition-colors duration-500">
+  <header class="bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-md py-6 px-4 sticky top-0 z-50 flex justify-between items-center max-w-5xl mx-auto rounded-b-xl">
+    <div>
+      <h1 class="text-4xl font-extrabold tracking-tight text-purple-600 dark:text-purple-400 select-none">The Living Diary</h1>
+      <p class="text-lg text-gray-500 dark:text-gray-400 select-none">Stories you won't believe... but they're real.</p>
+    </div>
+    <button id="darkToggle" aria-label="Toggle dark mode" class="ml-4 p-2 rounded-full bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-400 dark:text-gray-900 dark:hover:bg-purple-500 transition focus:outline-none focus:ring-2 focus:ring-purple-500">🌙</button>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-6 py-12">
+    <section aria-labelledby="formTitle" class="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-8 mb-12 transition-shadow duration-300">
+      <h2 id="formTitle" class="text-3xl font-bold mb-6 text-blue-600 dark:text-blue-400">Write a New Post</h2>
+      <form id="postForm" aria-describedby="formDesc" class="space-y-6">
+        <input type="hidden" id="editIndex" value="" />
+        <label for="postTitle" class="block font-semibold text-gray-700 dark:text-gray-300">Post Title</label>
+        <input type="text" id="postTitle" maxlength="100" placeholder="Your story title..." class="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" aria-required="true" />
+
+        <label for="postContent" class="block font-semibold text-gray-700 dark:text-gray-300">Write your story (Markdown supported)</label>
+        <textarea id="postContent" maxlength="1000" placeholder="Tell your story here..." rows="7" class="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-y" aria-required="true"></textarea>
+
+        <div class="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+          <span id="charCount">0 characters</span>
+          <button type="submit" id="submitBtn" class="bg-purple-600 text-white px-6 py-2 rounded-xl hover:bg-purple-700 dark:bg-purple-400 dark:text-gray-900 dark:hover:bg-purple-500 transition disabled:opacity-50">Save Post</button>
+        </div>
+      </form>
+    </section>
+
+    <div class="flex justify-between items-center mb-6">
+      <input type="search" id="searchPosts" placeholder="Search posts..." class="w-2/3 px-4 py-2 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+      <select id="sortSelect" class="w-1/3 ml-4 p-2 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+        <option value="newest">Newest First</option>
+        <option value="oldest">Oldest First</option>
+        <option value="title">Title A-Z</option>
+      </select>
+    </div>
+
+    <section id="posts" aria-live="polite" aria-label="Submitted posts" class="space-y-10"></section>
+  </main>
+
+  <footer class="text-center text-gray-500 dark:text-gray-400 text-sm py-10 select-none">
+    &copy; 2025 <span class="font-semibold text-purple-600 dark:text-purple-400">My Unique Life</span>. All rights reserved.
+  </footer>
+
+  <script>
+    const form = document.getElementById('postForm');
+    const postsContainer = document.getElementById('posts');
+    const titleInput = document.getElementById('postTitle');
+    const contentInput = document.getElementById('postContent');
+    const editIndexInput = document.getElementById('editIndex');
+    const submitBtn = document.getElementById('submitBtn');
+    const charCount = document.getElementById('charCount');
+    const darkToggle = document.getElementById('darkToggle');
+    const searchInput = document.getElementById('searchPosts');
+    const sortSelect = document.getElementById('sortSelect');
+
+    function escapeHTML(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.textContent = message;
+      toast.className = 'fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white py-2 px-6 rounded-lg shadow-lg animate-fade-in-out z-50';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function renderPost(title, content, isoDate, formattedDate, index, likes = 0) {
+      const safeTitle = escapeHTML(title);
+      const safeContent = marked.parse(content);
+      const postHTML = `
+        <article class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 mb-8 transform transition-transform duration-300 hover:scale-[1.03]" data-index="${index}">
+          <h3 class="text-3xl font-bold mb-3 text-blue-600 dark:text-blue-400">${safeTitle}</h3>
+          <time class="text-sm text-gray-400 dark:text-gray-500 mb-6 block" datetime="${isoDate}">Posted on ${formattedDate}</time>
+          <div class="prose prose-indigo max-w-none mb-4 dark:prose-invert">${safeContent}</div>
+          <div class="flex gap-4 items-center">
+            <button onclick="editPost(${index})" class="text-sm bg-yellow-400 text-white px-4 py-2 rounded hover:bg-yellow-500">Edit</button>
+            <button onclick="deletePost(${index})" class="text-sm bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Delete</button>
+            <button onclick="likePost(${index})" class="text-sm bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">👍 Like <span id="like-count-${index}">${likes}</span></button>
+          </div>
+        </article>
+      `;
+      postsContainer.insertAdjacentHTML('beforeend', postHTML);
+    }
+
+    function savePost(title, content, isEdit = false, editIndex = null) {
+      let posts = JSON.parse(localStorage.getItem('blogPosts') || '[]');
+      const now = new Date().toISOString();
+      if (isEdit && editIndex !== null) {
+        const oldLikes = posts[editIndex].likes || 0;
+        posts[editIndex] = { title, content, date: now, likes: oldLikes };
+      } else {
+        posts.push({ title, content, date: now, likes: 0 });
+      }
+      localStorage.setItem('blogPosts', JSON.stringify(posts));
+      loadPosts();
+    }
+
+    function loadPosts() {
+      postsContainer.innerHTML = '';
+      let posts = JSON.parse(localStorage.getItem('blogPosts') || '[]');
+
+      const sort = sortSelect?.value || 'newest';
+      if (sort === 'oldest') {
+        posts.sort((a, b) => new Date(a.date) - new Date(b.date));
+      } else if (sort === 'title') {
+        posts.sort((a, b) => a.title.localeCompare(b.title));
+      } else {
+        posts.sort((a, b) => new Date(b.date) - new Date(a.date));
+      }
+
+      posts.forEach((post, index) => {
+        const formatted = new Date(post.date).toLocaleString();
+        renderPost(post.title, post.content, post.date, formatted, index, post.likes || 0);
+      });
+    }
+
+    function editPost(index) {
+      const posts = JSON.parse(localStorage.getItem('blogPosts') || '[]');
+      const post = posts[index];
+      titleInput.value = post.title;
+      contentInput.value = post.content;
+      editIndexInput.value = index;
+      titleInput.focus();
+      updateCharCount();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function deletePost(index) {
+      if (confirm('Are you sure you want to delete this post?')) {
+        let posts = JSON.parse(localStorage.getItem('blogPosts') || '[]');
+        posts.splice(index, 1);
+        localStorage.setItem('blogPosts', JSON.stringify(posts));
+        loadPosts();
+      }
+    }
+
+    function likePost(index) {
+      let posts = JSON.parse(localStorage.getItem('blogPosts') || '[]');
+      posts[index].likes = (posts[index].likes || 0) + 1;
+      localStorage.setItem('blogPosts', JSON.stringify(posts));
+      document.getElementById(`like-count-${index}`).textContent = posts[index].likes;
+    }
+
+    function updateCharCount() {
+      charCount.textContent = `${contentInput.value.length} characters`;
+    }
+
+    const debounce = (fn, delay = 300) => {
+      let timeout;
+      return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), delay);
+      };
+    };
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      submitBtn.disabled = true;
+      const title = titleInput.value.trim();
+      const content = contentInput.value.trim();
+      const editIndex = editIndexInput.value;
+      if (!title || !content) {
+        alert('Please fill in both the title and content.');
+        submitBtn.disabled = false;
+        return;
+      }
+      savePost(title, content, editIndex !== '', editIndex !== '' ? parseInt(editIndex) : null);
+      showToast(editIndex !== '' ? 'Post updated!' : 'Post saved!');
+      form.reset();
+      editIndexInput.value = '';
+      updateCharCount();
+      titleInput.focus();
+      submitBtn.disabled = false;
+    });
+
+    contentInput.addEventListener('input', debounce(updateCharCount, 200));
+
+    searchInput.addEventListener('input', function (e) {
+      const query = e.target.value.toLowerCase();
+      const posts = postsContainer.querySelectorAll('article');
+      posts.forEach(post => {
+        const text = post.textContent.toLowerCase();
+        post.style.display = text.includes(query) ? 'block' : 'none';
+      });
+    });
+
+    sortSelect?.addEventListener('change', loadPosts);
+
+    function setDarkMode(enabled) {
+      if (enabled) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('darkMode', 'true');
+        darkToggle.textContent = '☀️';
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('darkMode', 'false');
+        darkToggle.textContent = '🌙';
+      }
+    }
+
+    darkToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setDarkMode(!isDark);
+    });
+
+    (() => {
+      const savedMode = localStorage.getItem('darkMode');
+      if (savedMode === 'true') setDarkMode(true);
+      else if (savedMode === 'false') setDarkMode(false);
+      else setDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+    })();
+
+    loadPosts();
+    updateCharCount();
+  </script>
+</body>
+</html>
